@@ -1,26 +1,25 @@
 Expansive.load({
     transforms: [{
-        name:       'compile-html',
-        input:      'html',
-        output:     'html',
+        /*
+            Compile angular html files into script (keep html extension)
+         */
+        name:       'ng-compile-html',
+        mappings:   'html',
         minify:     true,
         compress:   true,
         script: `
+            let service = expansive.services['ng-compile-html']
+            service.cache = []
+
             function transform(contents, meta, service) {
                 if (meta.isLayout || meta.isPartial) {
                     return contents
                 }
-                expansive.renderCache.nghtml ||= { js: [] }
-                expansive.renderCache.nghtml.js.push(meta.file)
-
+                service.cache.push(meta.dest)
                 contents = contents.replace(/$/mg, '\\\\').trim('\\\\')
                 contents = contents.replace(/"/mg, '\\\\"')
-
-/* UNUSED
-                let url = meta.url.dirname.join(meta.dest.basename.toString())
-*/
                 let url = meta.url
-                contents = 'angular.module("app").run(["Esp", "$templateCache", function(Esp, $templateCache) {\n' + 
+                contents = 'angular.module("app").run(["Esp", "$templateCache", function(Esp, $templateCache) {\n' +
                        '    $templateCache.put(Esp.url("/' + url + '"), "' + contents + '");\n}]);\n'
                 let minify = Cmd.locate('uglifyjs')
                 let cmd = minify
@@ -37,26 +36,35 @@ Expansive.load({
             }
         `
     }, {
-        name:       'compile-ng-js',
-        input:      [ 'js', 'ng' ],
-        output:     'js',
+        /*
+            Compile angular script files by using ng-annotate
+         */
+        name:       'ng-compile-js',
+        mappings: {
+            js: 'js'
+            ng: 'js',
+        }
         files:      null,
         script: `
-            let service = expansive.services['compile-ng-js']
-            service.files = expansive.directories.source.files(service.files, {relative: true}).unique()
+            let service = expansive.services['ng-compile-js']
+            if (service.files) {
+                service.files = expansive.directories.top.files(service.files, {directories: false, relative: true}).unique()
+            }
+            service.cache = []
 
             function transform(contents, meta, service) {
-                let match = service.files == null
+                let match = (service.files == null)
                 for each (file in service.files) {
-                    if (meta.file.glob(file)) {
+                    if (meta.source == file) {
                         match = true
                         break
                     }
                 }
                 if (!match) {
-                    vtrace('Omit', 'Skip annotating', meta.file)
+                    vtrace('Omit', 'Skip annotating', meta.path)
                     return contents
                 }
+                service.cache.push(meta.dest)
                 let na = Cmd.locate('ng-annotate')
                 if (!na) {
                     trace('Warn', 'Cannot find ng-annotate')
@@ -66,7 +74,10 @@ Expansive.load({
             }
         `
     }, {
-        name:   'package-ng',
+        /*
+            Package angular applications by catentating script files
+         */
+        name:   'ng-package',
         files:  null,
         dest:   'all.js',
         minify: true,
@@ -74,67 +85,63 @@ Expansive.load({
         mangle: true,
         dotmin: false,
         script: `
-            let service = expansive.services['package-ng']
+            let service = expansive.services['ng-package']
             if (service.enable) {
-                let control = expansive.control
-                control.render.js = [ expansive.services['package-ng'].dest ]
+                let collections = expansive.control.collections
+                collections.scripts ||= []
+                collections.scripts.push(service.dest)
             }
             function post(meta, service) {
-                /* 
+                /*
                     Catenate javascript files
                  */
-                let documents = expansive.directories.documents
-                let all = documents.join(service.dest)
-                let files = []
-                for (let [pak, def] in expansive.renderCache) {
-                    if (!(expansive.control.render && expansive.control.render.html)) {
-                        /* Cleanup unwanted html import files */
-                        if (!expansive.options.keep) {
-                            for each (html in def.html) {
-//  UNUSED
-                                if (documents.join(html).exists && false) {
-                                    documents.join(html).remove()
-                                }
-                            }
+                let dist = expansive.directories.dist
+                let all = dist.join(service.dest)
+                let files
+                if (service.files) {
+                    files = expansive.directories.dist.files(service.files, {directories: false, relative: true})
+                } else {
+                    files = []
+                    for each (path in expansive.collections.scripts) {
+                        if (path != service.dest) {
+                            path = expansive.directories.dist.join(path)
+                            files.push(path)
                         }
                     }
-                    for each (path in def.js) {
-                        if (path == service.dest) {
-                            continue
-                        }
-                        path = expansive.getDest(path)
+                    for each (path in expansive.services['ng-compile-html'].cache) {
                         files.push(path)
                     }
                 }
-                if (service.files) {
-                    files += directories.documents.files(service.files)
-                }
                 for each (let path: Path in files) {
-                    all.append('\n/*\n    ' + path.trimComponents(1) + '\n */\n' + path.readString() + '\n')
+                    trace('Catenate', path)
+                    let filename = expansive.trimPath(path, expansive.directories.dist)
+                    all.append('\n/*\n    ' + filename + '\n */\n' + path.readString() + '\n')
                     if (!expansive.options.keep) {
-                        path.remove()
-                        trace('Catenate', path)
-                        while (path.dirname != documents) {
+                        if (path.childOf(dist)) {
+                            path.remove()
+                        }
+                        while (path.dirname != dist) {
                             path = path.dirname
-                            if (path.childOf(documents)) {
+                            if (path.childOf(dist)) {
                                 path.remove()
                             }
                         }
                     }
                 }
-                if (service.minify) {
+                if (service.minify && all.exists) {
                     let minify = Cmd.locate('uglifyjs')
                     if (!minify) {
                         trace('Warn', 'Cannot find uglifyjs')
                         return
                     }
-                    let cmd = minify + ' ' + all 
+                    let cmd = minify + ' ' + all
                     if (service.compress) {
                         cmd += ' --compress'
                     }
                     if (service.mangle) {
                         cmd += ' --mangle'
                     }
+                    trace('Minify', all)
                     vtrace('Run', cmd)
                     contents = Cmd.run(cmd)
                     let outfile = all

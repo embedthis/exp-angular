@@ -1,16 +1,22 @@
 {
-    "name": "exp-ng",
+    "name": "exp-angular",
     "description": "Angular Tooling Plugin for Expansive",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "keywords": [
         "expansive-plugin",
         "ng"
     ],
     "licenses": "GPL",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/embedthis/exp-angular.git"
+    },
     "scripts": {
         "postcache": {
             "script": "Cmd.locate('uglifyjs') || run('npm install -g uglifyjs') ; Cmd.locate('ng-annotate') || run('npm install -g ng-annotate')"
         }
     },
-    "install": false
+    "pak": {
+        "version": ">=0.10"
+    }
 }

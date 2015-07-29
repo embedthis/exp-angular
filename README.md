@@ -1,49 +1,87 @@
-exp-ng
+exp-angular
 ===
 
-Expansive plugin for Angular scripts.
+Expansive plugin for Angular applications.
 
-Provides the 'compile-html', 'compile-ng-js', and 'package-ng' services.
+### Overview
+
+The exp-angular plugin provides build tooling for Angular applications. It provides the 'ng-compile-html' service to compile Angular HTML views into pure Javascript. The 'ng-compile-js' service annotates Angular scripts so they can be minfied and the 'package-ng' service bundles multiple Angular scripts into a single loadable application file.
 
 ### To install:
 
-    pak install exp-ng
+    pak install exp-angular
 
-### To configure in expansive.json:
+### Services
 
-* compile-less-css.enable &mdash; Enable the compile-less-css service to process less files.
-* compile-less-css.stylesheet &mdash; Primary stylesheet to update if any less file changes.
-    If specified, the "dependencies" map will be automatically created.
-* compile-less-css.dependencies &mdash; Explicit map of dependencies if not using "stylesheet".
-* compile-less-css.documents &mdash; Array of less files to compile.
-* prefix-css.enable &mdash; Enable running autoprefixer on CSS files to handle browser specific extensions.
-* minify-css.enable &mdash; Enable minifying CSS files.
-* minify-js.enable &mdash; Enable minifying script files.
-* minify-js.files &mdash; Array of files to minify. Files are relative to 'source'.
-* minify-js.compress &mdash; Enable compression of script files.
-* minify-js.mangle &mdash; Enable mangling of Javascript variable and function names.
-* minify-js.dotmin &mdash; Set '.min.js' as the output file extension after minification. Otherwise will be '.js'.
-* minify-js.exclude &mdash; Array of files to exclude from minification. Files are relative to 'source'.
+Provides the following services:
+* ng-compile-html
+* ng-compile-js
+* ng-package
+
+## ng-compile-html
+
+The ng-compile-html service compiles HTML views into scripts that preload the HTML into the client-side Angular browser cache. This replaces the HTML views with equivalent script files.
+
+If the `minify` configuration is enabled, the script will also be minified.
+
+### Configuration
+
+* compress &mdash; Enable compression of the resultant script file.
+* minify &mdash; Enable minification of the resultant script file.
+
+## ng-compile-js
+
+The ng-compile-js service processes Angular script files so they can be minified. It does this by including explicit annotations for the Angular dependency injection service. By default, this service compiles files with a '*.js' or '*.js.ng' extension.
+
+To specify the files to process, define the `files` property in the expansive.json ng-compile-js section. For example:
+```
+"services": {
+    "ng-compile-js": {
+        "files": [
+            "contents/**.js",
+            "lib/esp*/**.js",
+            "lib/angular*/**.js"
+        ]
+    }
+}
+```
+
+## ng-package
+
+The ng-package service packages all the Angular script files into a single, loadable application file. This includes compiled HTML views and Javascript libraries.
+
+This service requires the exp-js service to compute the order of Javascript libraries to include.
+
+### Configuration
+
+* files &mdash; List of files to package. Default to null which implies the automatic packaging of compiled scripts and script libraries.
+* dest &mdash; Destination bundled application file. Defaults to 'all.js'.
+* minify &mdash; Minify the final application file. Defaults to true.
+* compress &mdash; Compress the finall application file. Defaults to true.
+* mangle &mdash; Manage function and variable names. Defaults to true.
+* dotmin &mdash; Use '.min.js' as the output extension after minification. Otherwise will be '.js'. Defaults to true.
+
+## Example
+
+This example demonstrates the configuration for a production release.
 
 ```
 {
     services: {
-        'compile-html': {
-            enable: true,
-            minify: true,
-            compress: true
+        "minify-js": {
+            minify: true
         },
-        'compile-ng-js': {
-            files: [],
+        "minify-css": {
+            minify: true
         },
-        'package-ng': {
-            files:  null,
-            dest:   'all.js',
-            minify: true,
-            compress: true,
-            mangle: true,
-            dotmin: false,
-        }
+        "ng-compile-js": {
+            files: [
+                "contents/**.js",
+                "lib/esp*/**.js",
+                "lib/angular*/**.js"
+            ]
+        },
+        "ng-package": true
     }
 }
 ```
