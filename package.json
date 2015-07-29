@@ -1,7 +1,7 @@
 {
     "name": "exp-angular",
     "description": "Angular Tooling Plugin for Expansive",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "keywords": [
         "expansive-plugin",
         "ng"
@@ -13,7 +13,7 @@
     },
     "scripts": {
         "postcache": {
-            "script": "Cmd.locate('uglifyjs') || run('npm install -g uglifyjs') ; Cmd.locate('ng-annotate') || run('npm install -g ng-annotate')"
+            "script": "Cmd.locate('uglifyjs') || run('npm install -g uglify-js') ; Cmd.locate('ng-annotate') || run('npm install -g ng-annotate')"
         }
     },
     "pak": {
