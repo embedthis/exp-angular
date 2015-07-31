@@ -1,7 +1,7 @@
 {
     "name": "exp-angular",
     "description": "Angular Tooling Plugin for Expansive",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "keywords": [
         "expansive-plugin",
         "ng"
@@ -11,17 +11,19 @@
         "type": "git",
         "url": "git://github.com/embedthis/exp-angular.git"
     },
-    "scripts": {
-        "postcache": [
-            {
-                "script": "if (!Cmd.locate('uglifyjs')) { if (!Cmd.locate('npm')) { throw 'Cannot locate the \"npm\" utility.' } else { run('npm install -g uglify-js')}}"
-            },
-            {
-                "script": "if (!Cmd.locate('ng-annotate')) { if (!Cmd.locate('npm')) { throw 'Cannot locate the \"npm\" utility.' } else { run('npm install -g ng-annotate')}}"
-            }
-        ]
+    "devDependencies": {
+        "pak": ">=0.11.3"
     },
     "pak": {
-        "version": ">=0.10"
+        "scripts": {
+            "postcache": [
+                {
+                    "script": "if (!Cmd.locate('uglifyjs')) { if (!Cmd.locate('npm')) { throw 'Cannot locate the \"npm\" utility.' } else { run('npm install -g uglify-js')}}"
+                },
+                {
+                    "script": "if (!Cmd.locate('ng-annotate')) { if (!Cmd.locate('npm')) { throw 'Cannot locate the \"npm\" utility.' } else { run('npm install -g ng-annotate')}}"
+                }
+            ]
+        }
     }
 }
