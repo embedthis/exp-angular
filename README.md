@@ -88,4 +88,4 @@ This example demonstrates the configuration for a production release.
 
 ### Get Pak from
 
-[https://embedthis.com/pak/](https://embedthis.com/pak/download.html)
+[https://embedthis.com/pak/](https://embedthis.com/pak/)
