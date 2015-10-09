@@ -38,9 +38,10 @@ To specify the files to process, define the `files` property in the expansive.js
 "services": {
     "ng-compile-js": {
         "files": [
-            "contents/**.js",
-            "lib/esp*/**.js",
-            "lib/angular*/**.js"
+            "**.js",
+            '!lib/**.js',
+            'lib/angular*/**.js',
+            'lib/esp*/**.js'
         ]
     }
 }
@@ -68,17 +69,17 @@ This example demonstrates the configuration for a production release.
 ```
 {
     services: {
-        "minify-js": {
+        "js": {
             minify: true
         },
-        "minify-css": {
+        "css": {
             minify: true
         },
         "ng-compile-js": {
             files: [
-                "contents/**.js",
-                "lib/esp*/**.js",
-                "lib/angular*/**.js"
+                "**.js",
+                '!lib/**.js',
+                'lib/angular*/**.js'
             ]
         },
         "ng-package": true

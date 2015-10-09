@@ -1,7 +1,8 @@
 Expansive.load({
     transforms: [{
         /*
-            Compile angular html files into script (keep html extension)
+            Compile angular html files into js files with js extension.
+            Don't require users to name html files '.js.html' because debug mode will not use this step
          */
         name:       'ng-compile-html',
         mappings:   'html',
@@ -9,13 +10,17 @@ Expansive.load({
         compress:   true,
         script: `
             let service = expansive.services['ng-compile-html']
-            service.cache = []
+            service.html = []
+
+            function resolve(path: Path, service): Path? {
+                return path.joinExt('js', true)
+            }
 
             function transform(contents, meta, service) {
                 if (meta.isLayout || meta.isPartial) {
                     return contents
                 }
-                service.cache.push(meta.dest)
+                service.html.push(meta.destPath)
                 contents = contents.replace(/$/mg, '\\\\').trim('\\\\')
                 contents = contents.replace(/"/mg, '\\\\"')
                 let url = meta.url
@@ -48,23 +53,30 @@ Expansive.load({
         script: `
             let service = expansive.services['ng-compile-js']
             if (service.files) {
-                service.files = expansive.directories.top.files(service.files, {directories: false, relative: true}).unique()
+                for (let [key,value] in service.files) {
+                    if (value.startsWith('contents/')) {
+                        trace('Warn', 'ng-compile has file with "contents/" prefix', value)
+                        services.files[key] = expansive.getSourcePath(value)
+                    }
+                }
+                service.files = expansive.directories.contents.files(service.files, 
+                    {directories: false, relative: true}).unique()
             }
-            service.cache = []
+            service.scripts = []
 
             function transform(contents, meta, service) {
                 let match = (service.files == null)
                 for each (file in service.files) {
-                    if (meta.source == file) {
+                    if (meta.sourcePath == file) {
                         match = true
                         break
                     }
                 }
                 if (!match) {
-                    vtrace('Omit', 'Skip annotating', meta.path)
+                    vtrace('Omit', 'Skip annotating', meta.sourcePath)
                     return contents
                 }
-                service.cache.push(meta.dest)
+                service.scripts.push(meta.destPath)
                 let na = Cmd.locate('ng-annotate')
                 if (!na) {
                     trace('Warn', 'Cannot find ng-annotate')
@@ -85,37 +97,35 @@ Expansive.load({
         mangle: true,
         dotmin: false,
         script: `
-            let service = expansive.services['ng-package']
-            if (service.enable) {
-                let collections = expansive.control.collections
-                collections.scripts ||= []
-                collections.scripts.push(service.dest)
-            }
             function post(meta, service) {
                 /*
                     Catenate javascript files
                  */
-                let dist = expansive.directories.dist
+                let dist = directories.dist
                 let all = dist.join(service.dest)
                 let files
                 if (service.files) {
-                    files = expansive.directories.dist.files(service.files, {directories: false, relative: true})
+                    files = directories.dist.files(service.files, {directories: false, relative: true})
                 } else {
                     files = []
-                    for each (path in expansive.collections.scripts) {
-                        if (path != service.dest) {
-                            path = expansive.directories.dist.join(path)
-                            files.push(path)
-                        }
+                    for each (path in expansive.services['ng-compile-js'].scripts) {
+                        files.push(path)
                     }
-                    for each (path in expansive.services['ng-compile-html'].cache) {
+                    for each (path in expansive.services['ng-compile-html'].html) {
                         files.push(path)
                     }
                 }
-                for each (let path: Path in files) {
-                    trace('Catenate', path)
-                    let filename = expansive.trimPath(path, expansive.directories.dist)
-                    all.append('\n/*\n    ' + filename + '\n */\n' + path.readString() + '\n')
+                files = expansive.orderFiles(files, "js")
+
+                for each (let file: Path in files) {
+                    trace('Catenate', file)
+                    //  DEPRECATE
+                    if (file.startsWith('contents/')) {
+                        trace('Warn', 'ng-package has file with "contents/" prefix', file)
+                        file = expansive.getSourcePath(file)
+                    }
+                    let path = directories.dist.join(file)
+                    all.append('\n/*\n    Start of: "' + file + '"\n */\n' + path.readString() + '\n')
                     if (!expansive.options.keep) {
                         if (path.childOf(dist)) {
                             path.remove()
