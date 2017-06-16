@@ -57,6 +57,9 @@ Expansive.load({
                     contents = contents.replace(/$/mg, '\\').trim('\\')
                     contents = contents.replace(/"/mg, '\\"')
                     let url = meta.url
+                    if (url.endsWith('.js')) {
+                        url = url.trimExt()
+                    }
                     contents = 'angular.module("app").run(["Esp", "$templateCache", function(Esp, $templateCache) {\n' +
                            '    $templateCache.put(Esp.url("/' + url + '"), "' + contents + '");\n}]);\n'
                     contents = run(service.uglify + service.options, contents)
